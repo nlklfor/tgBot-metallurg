@@ -11,22 +11,29 @@ router = Router()
 
 # обрабочик отмены заказа
 
+
 @router.callback_query(lambda c: c.data == "cancel_order")
 async def cancel_order_handler(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.edit_text("❌ Заказ отменен.")
     await callback.answer()
 
+
 # обработчик подтверждения заказа
 
-@router.callback_query(lambda c: c.data == "confirm_order", OrderStates.confirm_order,)
 
+@router.callback_query(
+    lambda c: c.data == "confirm_order",
+    OrderStates.confirm_order,
+)
 async def confirm_order_handler(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     product_id = data.get("product_id")
 
     if not product_id:
-        await callback.message.answer("❌ Ошибка при оформлении заказа. Товар не найден.")
+        await callback.message.answer(
+            "❌ Ошибка при оформлении заказа. Товар не найден."
+        )
         await state.clear()
         return
 
@@ -38,10 +45,10 @@ async def confirm_order_handler(callback: CallbackQuery, state: FSMContext):
         )
 
     await callback.message.edit_text(
-            f"✅ Заказ оформлен!\n\n"
-            f"📦 Номер заказа: `{order.tracking_code}`\n"
-            f"📍 Статус: {order.status.value}",
-            parse_mode="Markdown",
+        f"✅ Заказ оформлен!\n\n"
+        f"📦 Номер заказа: `{order.tracking_code}`\n"
+        f"📍 Статус: {order.status.value}",
+        parse_mode="Markdown",
     )
 
     await state.clear()

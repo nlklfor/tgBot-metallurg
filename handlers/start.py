@@ -9,15 +9,18 @@ from states.order import OrderState
 
 router = Router()
 
+
 @router.message(CommandStart())
 async def start_command_handler(message: types.Message, state: FSMContext):
     args = message.text.split()
-    
+
     # /start без аргументов, отправляем приветственное сообщение
     if len(args) == 1:
-        await message.answer("Привет! 👋🏻\nПерейдите на сайт и выберите твоар для заказа.")
+        await message.answer(
+            "Привет! 👋🏻\nПерейдите на сайт и выберите твоар для заказа."
+        )
         return
-    
+
     # /start <product_id>
     product_id = args[1]
 
@@ -26,9 +29,11 @@ async def start_command_handler(message: types.Message, state: FSMContext):
         product = await product_repo.get_by_id(product_id)
 
         if not product or not product.is_active:
-            await message.answer("❌ Товар не найден или недоступен. Пожалуйста, выберите другой товар.")
+            await message.answer(
+                "❌ Товар не найден или недоступен. Пожалуйста, выберите другой товар."
+            )
             return
-        
+
         text = (
             f"🛒 *{product.title}* \n\n"
             f"{product.description or ''}\n\n"
@@ -37,7 +42,7 @@ async def start_command_handler(message: types.Message, state: FSMContext):
         )
 
         await message.answer(
-            text = text,
+            text=text,
             reply_markup=confirm_order_keyboard(),
             parse_mode="Markdown",
         )

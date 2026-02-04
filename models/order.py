@@ -12,6 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from models.base import Base
 from models.enum import OrderStatus
 
+
 class Order(Base):
     __tablename__ = "orders"
 
@@ -22,8 +23,12 @@ class Order(Base):
 
     product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), nullable=False)
 
-    status: Mapped[OrderStatus] = mapped_column(SQLEnum(OrderStatus), default=OrderStatus.CREATED, nullable=False)
+    status: Mapped[OrderStatus] = mapped_column(
+        SQLEnum(OrderStatus), default=OrderStatus.CREATED, nullable=False
+    )
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
 
     product = relationship("Product")

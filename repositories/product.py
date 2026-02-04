@@ -3,6 +3,7 @@ from sqlalchemy import select
 
 from models import Product
 
+
 class ProductRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
