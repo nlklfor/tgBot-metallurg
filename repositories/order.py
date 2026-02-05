@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
@@ -11,7 +12,7 @@ class OrderRepository:
         self.session = session
 
     async def create_order(
-        self, user_id: int, product_id: str, tracking_code: str | None = None
+        self, user_id: int, product_id: str, tracking_code: Optional[str] = None
     ) -> Order:
         if not tracking_code:
             tracking_code = str(uuid.uuid4().replace("-", "")[:10])
@@ -26,7 +27,7 @@ class OrderRepository:
         await self.session.refresh(new_order)
         return new_order
 
-    async def get_by_tracking_code(self, tracking_code: str) -> Order | None:
+    async def get_by_tracking_code(self, tracking_code: str) -> Optional[Order]:
         result = await self.session.execute(
             select(Order).where(Order.tracking_code == tracking_code)
         )
@@ -34,7 +35,7 @@ class OrderRepository:
 
     async def update_order_status(
         self, tracking_code: str, new_status: OrderStatus
-    ) -> Order | None:
+    ) -> Optional[Order]:
         order = await self.get_by_tracking_code(tracking_code)
         if not order:
             return None

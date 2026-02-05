@@ -5,7 +5,8 @@ from aiogram.fsm.context import FSMContext
 from database import get_session
 from repositories.product import ProductRepository
 from keyboards.order import confirm_order_keyboard
-from states.order import OrderState
+from states.order import OrderStates
+from keyboards.start import start_keyboard
 
 router = Router()
 
@@ -17,7 +18,8 @@ async def start_command_handler(message: types.Message, state: FSMContext):
     # /start без аргументов, отправляем приветственное сообщение
     if len(args) == 1:
         await message.answer(
-            "Привет! 👋🏻\nПерейдите на сайт и выберите твоар для заказа."
+            "Привет! 👋🏻\n\n" "Я помогу оформить заказ и отследить его статус.",
+            reply_markup=start_keyboard(),
         )
         return
 
@@ -48,4 +50,17 @@ async def start_command_handler(message: types.Message, state: FSMContext):
         )
 
         await state.update_data(product_id=product.id)
-        await state.set_state(OrderState.confirm_order)
+        await state.set_state(OrderStates.confirm_order)
+
+
+from aiogram.types import CallbackQuery
+from keyboards.start import start_keyboard
+
+
+@router.callback_query(lambda c: c.data == "go_start")
+async def go_start(callback: CallbackQuery):
+    await callback.message.answer(
+        "🏠 Главное меню\n\n" "Выберите действие:",
+        reply_markup=start_keyboard(),
+    )
+    await callback.answer()
