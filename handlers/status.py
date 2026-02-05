@@ -37,3 +37,26 @@ async def show_order_status_handler(message: types.Message, state: FSMContext):
         )
 
     await state.clear()
+    
+    @router.callback_query(lambda c: c.data.startswith("check_status:"))
+    async def check_status_callback_handler(callback: types.CallbackQuery):
+        tracking_code = callback.data.split(":")[1]
+
+        async for session in get_session():
+            order_repo = OrderRepository(session)
+            order = await order_repo.get_by_tracking_code(tracking_code)
+
+            if not order:
+                await callback.answer(
+                    "❌ Заказ не найден. Пожалуйста попробуйте снова."
+                )
+                return
+
+            await callback.message.answer(
+                f"📦 Статус вашего заказа:\n\n"
+                f"🔑 Трек-код: `{order.tracking_code}`\n"
+                f"📍 Статус: {order.status.value}",
+                parse_mode="Markdown",
+            )
+
+        await callback.answer()

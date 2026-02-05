@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from database import get_session
 from repositories.order import OrderRepository
 from states.order import OrderStates
-from models import OrderStatus
+from keyboards.status import check_status_keyboard
 
 router = Router()
 
@@ -49,6 +49,7 @@ async def confirm_order_handler(callback: CallbackQuery, state: FSMContext):
         f"📦 Номер заказа: `{order.tracking_code}`\n"
         f"📍 Статус: {order.status.value}",
         parse_mode="Markdown",
+        reply_markup=check_status_keyboard(order.tracking_code),
     )
 
     await state.clear()
