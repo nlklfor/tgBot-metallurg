@@ -3,9 +3,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ADMINS = {
-    748959905,  # Nikita
-}
+_admins_str = os.getenv("ADMINS", "")
+ADMINS = {int(admin_id.strip()) for admin_id in _admins_str.split(",") if admin_id.strip()}
 
 DATABASE_URL = "sqlite+aiosqlite:///db.sqlite3"
 
