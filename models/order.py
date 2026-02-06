@@ -6,6 +6,7 @@ from sqlalchemy import (
     Enum as SQLEnum,
     ForeignKey,
     String,
+    select,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -32,3 +33,31 @@ class Order(Base):
     )
 
     product = relationship("Product")
+
+
+async def create_test_order():
+    """Create a test order for testing status functionality"""
+    from database import SessionLocal
+    
+    try:
+        async with SessionLocal() as session:
+            result = await session.execute(
+                select(Order).where(Order.tracking_code == "TEST123456")
+            )
+            existing = result.scalars().first()
+            
+            if existing:
+                return  
+            
+            test_order = Order(
+                id=uuid.uuid4(),
+                tracking_code="TEST123456",
+                user_id=123456789,
+                product_id="test_metal_001",
+                status=OrderStatus.PAID,
+            )
+            session.add(test_order)
+            await session.commit()
+            print("✅ Test order created successfully")
+    except Exception as e:
+        print(f"❌ Error creating test order: {e}")
