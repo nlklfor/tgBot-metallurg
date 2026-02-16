@@ -1,22 +1,37 @@
-import asyncio
-from aiogram import Bot, Dispatcher
+"""
+Bot entry point.
+"""
 
+import asyncio
+import logging
+from aiogram import Bot, Dispatcher
 from config import TOKEN
-from handlers import order, status, admin, start
-from database import init_models
+from database.connection import get_connection
+from bot.handlers import start, status
+
+logging.basicConfig(level=logging.INFO)
+
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
+
+
+async def test_db():
+    """Test database connection."""
+    try:
+        conn = await get_connection()
+        result = await conn.fetch("SELECT 1;")
+        print("✅ Database connected successfully")
+        await conn.close()
+    except Exception as e:
+        print(f"Database connection failed: {str(e)}")
+        raise
 
 
 async def main():
-    await init_models()
-    
-    bot = Bot(token=TOKEN)
-    dp = Dispatcher()
-
+    await test_db()
     dp.include_router(start.router)
-    dp.include_router(order.router)
     dp.include_router(status.router)
-    dp.include_router(admin.router)
-
+    print("🚀 Bot is starting...")
     await dp.start_polling(bot)
 
 

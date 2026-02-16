@@ -1,5 +1,14 @@
+# Environment variables
 .env
+.env.local
+.env.*.local
+
+# Virtual environment
 .venv/
+venv/
+env/
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
@@ -8,3 +17,25 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+*.egg
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
