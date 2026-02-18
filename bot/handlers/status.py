@@ -1,49 +1,73 @@
+from os import sync
 from aiogram import Router
 from aiogram.types import Message
-from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-from database.connection import get_connection
+
+from bot.states.orders import OrderStates
+from bot.constants import BACK_BTN, CHECK_STATUS_BTN
+from bot.keyboards.main import main_keyboard
+from bot.services.order import get_order_by_number
 
 router = Router()
 
 
 STATUS_MAP = {
-    "waiting_for_payment": "⏳ Ожидает оплаты",
-    "paid": "✅ Оплачен",
-    "processing": "📦 Готовится к отправке",
-    "shipped": "🚚 Отправлен",
-    "completed": "🎉 Завершён",
+    "waiting_for_payment": "⏳ Очікує оплати",
+    "paid": "✅ Оплачено",
+    "processing": "📦 Готується до відправки",
+    "shipped": "🚚 Відправлено",
+    "completed": "🎉 Завершено",
 }
 
 
-@router.message(Command("status"))
-async def get_order_status(message: Message):
-    parts = message.text.split()
+@router.message(lambda message: message.text == "📦 Перевірити статус")
+async def ask_order_number(message: Message, state: FSMContext):
+    await message.answer("Введіть номер замовлення:")
+    await state.set_state(OrderStates.waiting_for_order_number)
 
-    if len(parts) < 2:
-        await message.answer("Введите номер заказа:\n/status MTL-0001")
+
+@router.message(OrderStates.waiting_for_order_number)
+async def show_status(message: Message, state: FSMContext):
+    order_number = message.text.strip()
+
+    order = await get_order_by_number(order_number)
+
+    if not order:
+        await message.answer("❌ Замовлення не знайдено.")
         return
 
-    order_number = parts[1]
+    pretty_status = STATUS_MAP.get(order["status"], order["status"])
+    order_name = order.get("product_name", "N/A")
+    order_size = order.get("size", "N/A")
 
-    try:
-        conn = await get_connection()
+    await message.answer(
+        f"📦 Статус замовлення {order_number}:\n\n"
+        f"📝 Назва: {order_name}\n"
+        f"📐 Розмір: {order_size}\n"
+        f"📊 Статус: {pretty_status}"
+    )
 
-        result = await conn.fetchrow(
-            "SELECT status FROM orders WHERE order_number = $1", order_number
-        )
+    await state.clear()
+    
+    await message.answer(
+    "Оберіть наступну дію:",
+    reply_markup=main_keyboard()
+)
 
-        await conn.close()
 
-        if not result:
-            await message.answer("❌ Заказ не найден.")
-            return
+@router.message(lambda message: message.text == CHECK_STATUS_BTN)
+async def ask_order_number(message: Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+    keyboard=[[KeyboardButton(text=BACK_BTN)]],
+    resize_keyboard=True
+    )
 
-        raw_status = result["status"]
-        pretty_status = STATUS_MAP.get(raw_status, raw_status)
+    await message.answer(
+        "Введіть номер замовлення:",
+        reply_markup=keyboard
+    )
 
-        await message.answer(f"📦 Статус заказа {order_number}:\n\n" f"{pretty_status}")
+    await state.set_state(OrderStates.waiting_for_order_number)
 
-    except Exception as e:
-        await message.answer("⚠ Ошибка при проверке заказа.")
-        print(e)
