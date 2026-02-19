@@ -16,10 +16,8 @@ dp = Dispatcher()
 
 
 async def test_db():
-    """Test database connection."""
     try:
         conn = await get_connection()
-        result = await conn.fetch("SELECT 1;")
         print("✅ Database connected successfully")
         await conn.close()
     except Exception as e:
