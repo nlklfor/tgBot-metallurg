@@ -2,7 +2,6 @@ from os import sync
 from aiogram import Router
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 
 from bot.states.orders import OrderStates
@@ -54,4 +53,4 @@ async def show_status(message: Message, state: FSMContext):
 
     await state.clear()
 
-    await message.answer("// CHOOSE_NEXT_ACTION:", reply_markup=main_keyboard())
+    await message.answer(BACK_BTN, reply_markup=main_keyboard())
