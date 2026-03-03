@@ -3,7 +3,7 @@ from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 
 from bot.keyboards.main import main_keyboard
-from bot.constants import BACK_BTN
+from bot.constants import BACK_BTN, START_MESSAGE
 
 router = Router()
 
@@ -12,6 +12,6 @@ router = Router()
 async def back_to_menu(message: Message, state: FSMContext):
     await state.clear()
     await message.answer(
-        "Вас вітає Metallurg Assistant 👋\n\nВиберіть дію:",
+        START_MESSAGE.format(user_id=message.from_user.id), 
         reply_markup=main_keyboard()
     )
