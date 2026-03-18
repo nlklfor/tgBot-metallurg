@@ -31,7 +31,10 @@ async def get_order_by_number(order_number: str) -> Optional[dict]:
         )
         if row is None:
             return None
-        return dict(row)
+        result = dict(row)
+        if isinstance(result.get("items"), str):
+            result["items"] = json.loads(result["items"])
+        return result
     finally:
         await conn.close()
 
