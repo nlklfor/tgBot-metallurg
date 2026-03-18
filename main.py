@@ -29,6 +29,7 @@ async def test_db():
 
 async def main():
     await test_db()
+    await bot.delete_webhook(drop_pending_updates=True)
     dp.include_router(start.router)
     dp.include_router(status.router)
     dp.include_router(faq.router)
