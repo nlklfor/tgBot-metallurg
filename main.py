@@ -10,6 +10,7 @@ from aiogram.enums import ParseMode
 from config import TOKEN
 from database.connection import get_connection
 from bot.handlers import contact, start, status, faq
+from bot.services.notify import start_notify_loop
 
 logging.basicConfig(level=logging.INFO)
 
@@ -35,6 +36,7 @@ async def main():
     dp.include_router(faq.router)
     dp.include_router(contact.router)
     print("🚀 Bot is starting...")
+    asyncio.create_task(start_notify_loop(bot))
     await dp.start_polling(bot)
 
 
