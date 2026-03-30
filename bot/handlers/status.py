@@ -50,6 +50,9 @@ async def ask_order_number(message: Message, state: FSMContext):
 
 @router.message(OrderStates.waiting_for_order_number)
 async def show_status(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer("Please send a text order number, e.g. <code>MTL-1234</code>")
+        return
     order_number = message.text.strip().upper()
     order = await get_order_by_number(order_number)
 
