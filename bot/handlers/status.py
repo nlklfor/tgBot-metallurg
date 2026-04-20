@@ -2,7 +2,7 @@ from aiogram import Router
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from bot.states.orders import OrderStates
-from bot.constants import BACK_BTN, CHECK_STATUS_BTN
+from bot.constants import BACK_BTN, CHECK_STATUS_BTN, FAQ_BTN, CONTACT_BTN
 from bot.keyboards.main import main_keyboard
 from bot.services.order import get_order_by_number
 
@@ -53,6 +53,19 @@ async def show_status(message: Message, state: FSMContext):
     if not message.text:
         await message.answer("Please send a text order number, e.g. <code>MTL-1234</code>")
         return
+
+    if message.text in (BACK_BTN, CHECK_STATUS_BTN, FAQ_BTN, CONTACT_BTN):
+        await state.clear()
+        if message.text == FAQ_BTN:
+            from bot.handlers.faq import show_faq
+            await show_faq(message)
+        elif message.text == CONTACT_BTN:
+            from bot.handlers.contact import contact_manager
+            await contact_manager(message)
+        else:
+            await message.answer("Select operational command:", reply_markup=main_keyboard())
+        return
+
     order_number = message.text.strip().upper()
     order = await get_order_by_number(order_number)
 
