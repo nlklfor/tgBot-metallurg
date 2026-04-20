@@ -9,6 +9,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from config import TOKEN
 from database.connection import get_connection
+from healthcheck import start as start_healthcheck
 from bot.handlers import contact, start, status, faq
 from bot.services.notify import start_notify_loop
 
@@ -29,6 +30,7 @@ async def test_db():
 
 
 async def main():
+    start_healthcheck() 
     await test_db()
     await bot.delete_webhook(drop_pending_updates=True)
     dp.include_router(start.router)
