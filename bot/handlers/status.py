@@ -87,33 +87,31 @@ async def show_status(message: Message, state: FSMContext):
     stepper = build_stepper(route, current_index)
 
     ttn = order.get("tracking_number")
-    np_data = await get_np_status(ttn) if ttn and not is_international else None
+    np_data = await get_np_status(ttn) if ttn else None
 
-    np_block = ""
-    if not is_international:
-        if ttn and np_data:
-            np_status = np_data.get("status_raw") or np_data.get("status", "—")
-            city = np_data.get("city_recipient", "—")
-            warehouse = np_data.get("warehouse_recipient", "—")
-            delivered_at = (np_data.get("actual_date") or np_data.get("scheduled_date") or "—")[:10]
-            np_block = (
-                f"\n\n<b>// NOVA_POSHTA_STATUS</b>\n"
-                f"NP_STATUS: <b>{np_status}</b>\n"
-                f"CITY: {city}\n"
-                f"BRANCH: {warehouse}\n"
-                f"DELIVERED: {delivered_at}\n"
-                f"TTN: <code>{ttn}</code>"
-            )
-        elif ttn:
-            np_block = (
-                f"\n\n<b>// NOVA_POSHTA_STATUS</b>\n"
-                f"TTN: <code>{ttn}</code>\n"
-                f"<i>// NP_STATUS_UNAVAILABLE</i>"
-            )
-        else:
-            np_block = "\n\n<i>// TTN_NOT_ASSIGNED_YET</i>"
+    if ttn and np_data:
+        np_status = np_data.get("status_raw") or np_data.get("status", "—")
+        city = np_data.get("city_recipient", "—")
+        warehouse = np_data.get("warehouse_recipient", "—")
+        delivered_at = (np_data.get("actual_date") or np_data.get("scheduled_date") or "—")[:10]
+        np_block = (
+            f"\n\n<b>// NOVA_POSHTA_STATUS</b>\n"
+            f"NP_STATUS: <b>{np_status}</b>\n"
+            f"CITY: {city}\n"
+            f"BRANCH: {warehouse}\n"
+            f"DELIVERED: {delivered_at}\n"
+            f"TTN: <code>{ttn}</code>"
+        )
+    elif ttn:
+        np_block = (
+            f"\n\n<b>// NOVA_POSHTA_STATUS</b>\n"
+            f"TTN: <code>{ttn}</code>\n"
+            f"<i>// NP_STATUS_UNAVAILABLE</i>"
+        )
+    else:
+        np_block = "\n\n<i>// TTN_NOT_ASSIGNED_YET</i>"
 
-    if ttn and not is_international:
+    if ttn:
         reply_markup = tracking_keyboard(ttn, order_number)
     else:
         reply_markup = no_ttn_keyboard(order_number)
