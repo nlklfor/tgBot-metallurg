@@ -13,7 +13,7 @@ from bot.handlers import contact, start, status, faq
 from bot.handlers import tracking_details
 from bot.services.notify import start_notify_loop
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, stream=__import__("sys").stdout)
 
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
