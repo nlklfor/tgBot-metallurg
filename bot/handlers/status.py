@@ -4,7 +4,9 @@ from aiogram.fsm.context import FSMContext
 from bot.states.orders import OrderStates
 from bot.constants import BACK_BTN, CHECK_STATUS_BTN, FAQ_BTN, CONTACT_BTN
 from bot.keyboards.main import main_keyboard
+from bot.keyboards.tracking import tracking_keyboard, no_ttn_keyboard
 from bot.services.order import get_order_by_number
+from bot.services.nova_poshta import get_np_status
 
 router = Router()
 
@@ -84,18 +86,36 @@ async def show_status(message: Message, state: FSMContext):
     current_stage = route[current_index] if current_index < len(route) else "UNKNOWN"
     stepper = build_stepper(route, current_index)
 
-    tracking_line = ""
-    if order.get("tracking_number"):
-        tracking_line = f"\n\n<b>TRACKING_CODE:</b> <code>{order['tracking_number']}</code>"
+    ttn = order.get("tracking_number")
+    np_data = await get_np_status(ttn) if ttn else None
 
-    items = order.get("items") or []
-    items_text = ""
-    if items:
-        items_lines = [
-            f"  • {item.get('name', 'N/A')} — EU {item.get('selectedSize', 'N/A')}"
-            for item in items
-        ]
-        items_text = "\n<b>ITEMS:</b>\n" + "\n".join(items_lines)
+    np_block = ""
+    if ttn and np_data:
+        np_status = np_data.get("status", "—")
+        city = np_data.get("city", "—")
+        warehouse = np_data.get("warehouse", "—")
+        delivered_at = np_data.get("delivered_at", "—")
+        np_block = (
+            f"\n\n<b>// NOVA_POSHTA_STATUS</b>\n"
+            f"NP_STATUS: <b>{np_status}</b>\n"
+            f"CITY: {city}\n"
+            f"BRANCH: {warehouse}\n"
+            f"DELIVERED: {delivered_at}\n"
+            f"TTN: <code>{ttn}</code>"
+        )
+    elif ttn:
+        np_block = (
+            f"\n\n<b>// NOVA_POSHTA_STATUS</b>\n"
+            f"TTN: <code>{ttn}</code>\n"
+            f"<i>// NP_STATUS_UNAVAILABLE</i>"
+        )
+    else:
+        np_block = "\n\n<i>// TTN_NOT_ASSIGNED_YET</i>"
+
+    if ttn:
+        reply_markup = tracking_keyboard(ttn, order_number)
+    else:
+        reply_markup = no_ttn_keyboard(order_number)
 
     await message.answer(
         f"<b>// TRACKING_REPORT: {order_number}</b>\n"
@@ -105,13 +125,13 @@ async def show_status(message: Message, state: FSMContext):
         f"\n"
         f"<b>// DELIVERY_PIPELINE</b>\n"
         f"{stepper}"
-        f"{tracking_line}"
-        f"{items_text}\n"
+        f"{np_block}\n"
         f"\n"
         f"CUSTOMER: {order.get('customer_name', 'N/A')}\n"
         f"ZONE: {order.get('shipping_zone', 'N/A')}\n"
         f"TOTAL: {order.get('total_price', 0):,} UAH",
+        reply_markup=reply_markup,
     )
 
     await state.clear()
-    await message.answer(BACK_BTN, reply_markup=main_keyboard())
+    await message.answer("// SELECT_NEXT_COMMAND:", reply_markup=main_keyboard())
