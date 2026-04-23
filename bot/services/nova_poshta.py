@@ -1,5 +1,8 @@
+import logging
 import aiohttp
 from config import SUPABASE_URL, SUPABASE_ANON_KEY
+
+logger = logging.getLogger(__name__)
 
 
 async def get_np_status(ttn: str) -> dict | None:
@@ -15,6 +18,8 @@ async def get_np_status(ttn: str) -> dict | None:
             async with session.post(url, json={"ttn": ttn}, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as resp:
                 if resp.status != 200:
                     return None
-                return await resp.json()
+                data = await resp.json()
+                print("DEBUG NP response:", data)
+                return data
     except Exception:
         return None
