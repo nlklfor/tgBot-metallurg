@@ -9,7 +9,9 @@ START_MESSAGE = (
     "Terminal session: active\n"
     "User_ID: <code>{user_id}</code>\n"
     "--------------------------------\n"
-    "Select operational command:"
+    "Select operational command:\n\n"
+    "To check out the archive, visit <a href=\"https://metallurg.vercel.app/gate/mtl-ch-ua\">MTL WEBSITE</a> "
+    "and enter your <b>User_ID</b> shown above."
 )
 STATUS_MAP = {
     "waiting_for_payment": "[ PENDING_PAYMENT ]",
