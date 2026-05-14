@@ -11,7 +11,7 @@ START_MESSAGE = (
     "--------------------------------\n"
     "Select operational command:\n\n"
     "To check out the archive, visit <a href=\"https://metallurg.vercel.app/gate/mtl-ch-ua\">MTL WEBSITE</a> "
-    "and enter your <b>User_ID</b> shown above."
+    "and pless the button to enter the archive."
 )
 STATUS_MAP = {
     "waiting_for_payment": "[ PENDING_PAYMENT ]",
