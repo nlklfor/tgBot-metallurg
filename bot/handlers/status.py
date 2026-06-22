@@ -69,7 +69,15 @@ async def show_status(message: Message, state: FSMContext):
         return
 
     order_number = message.text.strip().upper()
-    order = await get_order_by_number(order_number)
+    try:
+        order = await get_order_by_number(order_number)
+    except Exception:
+        await message.answer(
+            "<b>// SYSTEM_ERROR</b>\n\n"
+            "Database is temporarily unavailable.\n"
+            "Please try again in a moment."
+        )
+        return
 
     if not order:
         await message.answer(
