@@ -80,6 +80,17 @@ async def show_status(message: Message, state: FSMContext):
         )
         return
 
+    contact_field = (order.get("contact") or "").strip()
+    requester_username = (message.from_user.username or "").lower()
+    if contact_field.startswith("@"):
+        order_username = contact_field.lstrip("@").lower()
+        if requester_username and order_username != requester_username:
+            await message.answer(
+                "<b>// ACCESS_DENIED</b>\n\n"
+                f"Order <code>{order_number}</code> does not belong to your account."
+            )
+            return
+
     is_international = order.get("is_international", False)
     current_index = order.get("current_status_index", 0)
     route = INTERNATIONAL_ROUTE if is_international else LOCAL_ROUTE
