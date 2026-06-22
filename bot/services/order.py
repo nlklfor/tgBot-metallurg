@@ -17,6 +17,8 @@ async def get_order_by_number(order_number: str) -> Optional[dict]:
                 customer_name,
                 contact,
                 shipping_zone,
+                city,
+                np_branch,
                 items,
                 total_price,
                 status,

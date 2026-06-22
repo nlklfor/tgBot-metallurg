@@ -2,7 +2,7 @@ from aiogram import Router
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from bot.states.orders import OrderStates
-from bot.constants import BACK_BTN, CHECK_STATUS_BTN, FAQ_BTN, CONTACT_BTN
+from bot.constants import BACK_BTN, CHECK_STATUS_BTN, FAQ_BTN, CONTACT_BTN, STATUS_MAP
 from bot.keyboards.main import main_keyboard
 from bot.keyboards.tracking import tracking_keyboard
 from bot.services.order import get_order_by_number
@@ -138,7 +138,7 @@ async def show_status(message: Message, state: FSMContext):
         f"<b>// TRACKING_REPORT: {order_number}</b>\n"
         f"\n"
         f"CURRENT_STAGE: [ <b>{current_stage}</b> ]\n"
-        f"STATUS: OPERATIONAL\n"
+        f"PAYMENT: {STATUS_MAP.get(order.get('status', ''), '[ UNKNOWN ]')}\n"
         f"\n"
         f"<b>// DELIVERY_PIPELINE</b>\n"
         f"{stepper}"
