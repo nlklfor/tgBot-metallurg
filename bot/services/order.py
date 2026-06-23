@@ -1,6 +1,9 @@
 import json
+import logging
 from typing import Optional
 from database.connection import get_connection
+
+logger = logging.getLogger(__name__)
 
 
 async def get_order_by_number(order_number: str) -> Optional[dict]:
@@ -8,7 +11,11 @@ async def get_order_by_number(order_number: str) -> Optional[dict]:
     Fetches a full order from Supabase (via direct Postgres connection)
     by order_number. Returns a dict or None if not found.
     """
-    conn = await get_connection()
+    try:
+        conn = await get_connection()
+    except Exception:
+        logger.exception("DB connection failed for get_order_by_number(%s)", order_number)
+        raise
     try:
         row = await conn.fetchrow(
             """
@@ -17,6 +24,8 @@ async def get_order_by_number(order_number: str) -> Optional[dict]:
                 customer_name,
                 contact,
                 shipping_zone,
+                city,
+                np_branch,
                 items,
                 total_price,
                 status,
@@ -36,16 +45,19 @@ async def get_order_by_number(order_number: str) -> Optional[dict]:
         if isinstance(result.get("items"), str):
             result["items"] = json.loads(result["items"])
         return result
+    except Exception:
+        logger.exception("Query failed for order %s", order_number)
+        raise
     finally:
         await conn.close()
 
 
 async def save_bot_user(tg_username: str, chat_id: int) -> None:
-    """
-    Saves or updates a Telegram user's chat_id mapped to their @username.
-    Called on /start so we can send PDFs after order placement.
-    """
-    conn = await get_connection()
+    try:
+        conn = await get_connection()
+    except Exception:
+        logger.exception("DB connection failed for save_bot_user(%s)", tg_username)
+        return
     try:
         await conn.execute(
             """
@@ -57,5 +69,7 @@ async def save_bot_user(tg_username: str, chat_id: int) -> None:
             tg_username.lower(),
             chat_id,
         )
+    except Exception:
+        logger.exception("Failed to save bot user %s", tg_username)
     finally:
         await conn.close()

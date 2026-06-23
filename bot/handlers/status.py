@@ -2,9 +2,9 @@ from aiogram import Router
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from bot.states.orders import OrderStates
-from bot.constants import BACK_BTN, CHECK_STATUS_BTN, FAQ_BTN, CONTACT_BTN
+from bot.constants import BACK_BTN, CHECK_STATUS_BTN, FAQ_BTN, CONTACT_BTN, STATUS_MAP
 from bot.keyboards.main import main_keyboard
-from bot.keyboards.tracking import tracking_keyboard, no_ttn_keyboard
+from bot.keyboards.tracking import tracking_keyboard
 from bot.services.order import get_order_by_number
 from bot.services.nova_poshta import get_np_status
 
@@ -69,7 +69,15 @@ async def show_status(message: Message, state: FSMContext):
         return
 
     order_number = message.text.strip().upper()
-    order = await get_order_by_number(order_number)
+    try:
+        order = await get_order_by_number(order_number)
+    except Exception:
+        await message.answer(
+            "<b>// SYSTEM_ERROR</b>\n\n"
+            "Database is temporarily unavailable.\n"
+            "Please try again in a moment."
+        )
+        return
 
     if not order:
         await message.answer(
@@ -111,23 +119,47 @@ async def show_status(message: Message, state: FSMContext):
     else:
         np_block = "\n\n<i>// TTN_NOT_ASSIGNED_YET</i>"
 
-    if ttn:
-        reply_markup = tracking_keyboard(ttn, order_number)
-    else:
-        reply_markup = no_ttn_keyboard(order_number)
+    reply_markup = tracking_keyboard(ttn) if ttn else None
+
+    items = order.get("items") or []
+    items_lines = []
+    for item in items:
+        qty = item.get("cart_quantity", 1)
+        line = f"  · {item.get('name', '?')} / {item.get('selectedSize', '?')} — {item.get('price', 0):,} UAH"
+        if qty > 1:
+            line += f" x{qty}"
+        items_lines.append(line)
+    items_block = "\n".join(items_lines) if items_lines else "  —"
+
+    is_ukraine = order.get("is_international", False)
+    city = order.get("city")
+    np_branch = order.get("np_branch")
+    delivery_address_block = ""
+    if is_ukraine and city:
+        delivery_address_block = f"\nCITY: {city}"
+        if np_branch:
+            delivery_address_block += f"\nBRANCH: {np_branch}"
+
+    contact = order.get("contact", "—")
 
     await message.answer(
         f"<b>// TRACKING_REPORT: {order_number}</b>\n"
         f"\n"
         f"CURRENT_STAGE: [ <b>{current_stage}</b> ]\n"
-        f"STATUS: OPERATIONAL\n"
+        f"PAYMENT: {STATUS_MAP.get(order.get('status', ''), '[ UNKNOWN ]')}\n"
         f"\n"
         f"<b>// DELIVERY_PIPELINE</b>\n"
         f"{stepper}"
         f"{np_block}\n"
         f"\n"
         f"CUSTOMER: {order.get('customer_name', 'N/A')}\n"
-        f"ZONE: {order.get('shipping_zone', 'N/A')}\n"
+        f"CONTACT: {contact}\n"
+        f"ZONE: {order.get('shipping_zone', 'N/A')}"
+        f"{delivery_address_block}\n"
+        f"\n"
+        f"<b>// ORDER_ITEMS</b>\n"
+        f"{items_block}\n"
+        f"\n"
         f"TOTAL: {order.get('total_price', 0):,} UAH",
         reply_markup=reply_markup,
     )
