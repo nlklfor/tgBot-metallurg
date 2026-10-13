@@ -136,13 +136,22 @@ async def show_status(message: Message, state: FSMContext):
     is_ukraine = order.get("shipping_zone") == "Ukraine"
     current_index = order.get("current_status_index", 0)
     route = LOCAL_ROUTE if is_ukraine else INTERNATIONAL_ROUTE
-    current_stage = route[current_index] if current_index < len(route) else "UNKNOWN"
-    stepper = build_stepper(route, current_index)
+    is_cancelled = order.get("status") == "cancelled"
+    if is_cancelled:
+        # A cancelled order has no delivery to follow; don't show the first
+        # route step as "active".
+        current_stage = "CANCELLED"
+        stepper = "<i>// ORDER_CANCELLED — no delivery in progress</i>"
+    else:
+        current_stage = route[current_index] if current_index < len(route) else "UNKNOWN"
+        stepper = build_stepper(route, current_index)
 
     ttn = order.get("tracking_number")
-    np_data = await get_np_status(ttn) if ttn else None
+    np_data = await get_np_status(ttn) if ttn and not is_cancelled else None
 
-    if ttn and np_data:
+    if is_cancelled:
+        np_block = ""
+    elif ttn and np_data:
         np_status = html.escape(str(np_data.get("status_raw") or np_data.get("status", "—")))
         city = html.escape(str(np_data.get("city_recipient", "—")))
         warehouse = html.escape(str(np_data.get("warehouse_recipient", "—")))
@@ -164,7 +173,7 @@ async def show_status(message: Message, state: FSMContext):
     else:
         np_block = "\n\n<i>// TTN_NOT_ASSIGNED_YET</i>"
 
-    reply_markup = tracking_keyboard(ttn) if ttn else None
+    reply_markup = tracking_keyboard(ttn) if ttn and not is_cancelled else None
 
     items = order.get("items") or []
     items_lines = []
