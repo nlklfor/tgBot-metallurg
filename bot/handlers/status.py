@@ -194,6 +194,12 @@ async def show_status(message: Message, state: FSMContext):
         delivery_address_block = f"\nCITY: {html.escape(city)}"
         if np_branch:
             delivery_address_block += f"\nBRANCH: {html.escape(np_branch)}"
+    elif not is_ukraine:
+        country = order.get("country")
+        if country:
+            delivery_address_block += f"\nCOUNTRY: {html.escape(country)}"
+        if city:
+            delivery_address_block += f"\nCITY: {html.escape(city)}"
 
     contact = html.escape(mask_contact(order.get("contact")))
     customer = html.escape(mask_name(order.get("customer_name")))
