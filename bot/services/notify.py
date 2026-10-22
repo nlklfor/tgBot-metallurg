@@ -53,8 +53,12 @@ async def start_notify_loop(bot: Bot) -> None:
                 or (now - last_notified).total_seconds() >= NOTIFY_COOLDOWN
             )
 
-            if cooldown_passed and await _has_new_products(last_checked):
-                last_checked = now
+            # During the cooldown, don't advance last_checked: products added
+            # meanwhile must still trigger a notification once it expires.
+            if not cooldown_passed:
+                continue
+
+            if await _has_new_products(last_checked):
                 last_notified = now
                 chat_ids = await _get_all_chat_ids()
                 logger.info("New products found — notifying %d users", len(chat_ids))
@@ -63,7 +67,6 @@ async def start_notify_loop(bot: Bot) -> None:
                         await bot.send_message(chat_id, NOTIFICATION_TEXT)
                     except Exception:
                         logger.warning("Failed to send notification to %s", chat_id)
-            else:
-                last_checked = now
+            last_checked = now
         except Exception:
             logger.exception("Error in notification loop")

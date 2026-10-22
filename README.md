@@ -3,62 +3,48 @@
 > **[SYSTEM_BOOT]... OK**  
 > **[IDENTIFICATION_SUCCESSFUL]**
 >
-> Enterprise-grade Telegram bot for metallurgy order tracking and management. Real-time status updates, secure authentication, and seamless user experience.
+> Telegram bot for the METALLURG™ archive store: order tracking, FAQ and new-drop notifications.
 
 ---
 
 ## OPERATIONAL COMMANDS 📋
 
-- **< TRACK_ORDER_STATUS >** - Real-time order tracking with status indicators
-- **< FAQ >** - Comprehensive knowledge base (Доставка, Видмова та Повернення, Методи Оплати)
-- **< CONTACT_MANAGER >** - Direct communication channel with support team
-- **< BACK_TO_MENU >** - Navigation control across all sections
+- **[ TRACK_MY_OBJECT ]** — order lookup by code (`MTL-XXXXXX`): status, delivery route, Nova Poshta tracking, items and total
+- **[ FAQ ]** — delivery, returns, payment
+- **[ CONTACT_OPERATOR ]** — link to the manager
+
+The bot also pings everyone who pressed /start (users with a Telegram @username) when new products appear in the archive (at most once every 12 hours).
 
 ## TECHNICAL SPECIFICATIONS 🛠️
 
 | Component | Details |
 |-----------|---------|
-| **Framework** | [aiogram 3.x](https://github.com/aiogram/aiogram) |
-| **Language** | Python 3.9+ |
-| **Architecture** | Handlers + FSM States + Service Layer |
-| **Parse Mode** | HTML |
+| **Framework** | [aiogram 3.15](https://github.com/aiogram/aiogram), long polling |
+| **Language** | Python 3.10+ (production runs 3.13 on Railway) |
+| **Database** | Supabase Postgres via `asyncpg` (direct connection, read-only use except `bot_users`) |
+| **Tracking** | Supabase edge function `nova-poshta-track` (only answers for TTNs that belong to an order) |
+| **Parse Mode** | HTML — every value from the DB or Nova Poshta is `html.escape`d |
+| **Hosting** | Railway, `Procfile` → `worker: python main.py`, deploys on push to `main` |
 
-## SYSTEM REQUIREMENTS 📦
+## ENVIRONMENT 🔑
 
-- Python 3.9 or higher
-- pip / Poetry (Python package manager)
-- Virtual environment (recommended)
+Set these in Railway → Variables (or a local `.env`, never committed):
 
-## INSTALLATION PROTOCOL 🚀
-
-### 1️⃣ Clone Repository
-```bash
-git clone https://github.com/your-org/tgBot-metallurg.git
-cd tgBot-metallurg
+```env
+BOT_TOKEN=...            # from @BotFather
+DATABASE_URL=postgresql://...   # Supabase → Connect → connection string (pooler)
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_ANON_KEY=...    # Supabase → Settings → API (public anon key)
 ```
 
-### 2️⃣ Initialize Virtual Environment
+Only one process may poll with a given `BOT_TOKEN`: running the bot locally while Railway is up makes Telegram reject one of them.
+
+## LOCAL RUN 🚀
+
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate  # macOS/Linux
-# or
-.venv\Scripts\activate  # Windows
-```
-
-### 3️⃣ Install Dependencies
-```bash
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-```
-
-### 4️⃣ Environment Configuration
-Create `.env` file in project root:
-```env
-BOT_TOKEN=your_telegram_bot_token_here
-DATABASE_URL=sqlite+aiosqlite:///./db.sqlite3
-ADMINS=admin_id_1,admin_id_2
-```
-### 5️⃣ Launch Service
-```bash
 python3 main.py
 ```
 
@@ -70,35 +56,26 @@ Expected output:
 
 ---
 
-## USER INTERFACE 🖥️
+## ORDER LOOKUP 🔎
 
-### OPERATIONAL MODES
+- Route follows `shipping_zone`, exactly like the website:
+  - `Ukraine` → `ORDER_ACCEPTED → PACKING → READY_FOR_PICKUP → HANDED_TO_RESIDENT`
+  - `International` → `ORDER_ACCEPTED → PROCESSING → IN_TRANSIT_TO_HUB → BORDER_CROSSING → ARRIVED_IN_UKRAINE → DELIVERED_TO_NP`
+- Current step = `orders.current_status_index` (set from the admin panel).
+- Cancelled orders show `CANCELLED` and no pipeline.
+- Customer name and contact are masked (`Nikita S.`, `+380*****4567`).
+- Max 8 lookups per chat per 10 minutes (same limit as the site's `track-order`).
 
-#### < TRACK_ORDER_STATUS >
-Query order status by tracking code
-- **Input**: Tracking code in format `XXXXXXX`
-- **Output**: Real-time status with indicator
-- **Status Map**:
-  - `[PENDING_PAYMENT]` - Awaiting payment confirmation
-  - `[PAYMENT_CONFIRMED]` - Transaction processed
-  - `[IN_PREPARATION]` - Order assembly in progress
-  - `[DISPATCHED_TO_HUB]` - In transit to destination
-  - `[ARCHIVED_SUCCESSFULLY]` - Delivery complete
+### Status map
 
-#### < FAQ >
-Knowledge base & Protocol Documentation
-- **[01] ДОСТАВКА** - Express delivery via Нова Пошта (1-3 business days)
-- **[02] ОБМІН ТА ПОВЕРНЕННЯ** - 14-day return window (pristine condition)
-- **[03] ОПЛАТА** - Secure card transactions or cash-on-delivery
-
-#### < CONTACT_MANAGER >
-Direct communication with support team
-- Accessible during business hours
-- Real-time message routing
-
-#### < BACK_TO_MENU >
-Navigation control
-- Return to main menu from any section
+| `orders.status` | Shown as |
+|-----------------|----------|
+| `waiting_for_payment` | `[ PENDING_PAYMENT ]` |
+| `paid` | `[ PAYMENT_CONFIRMED ]` |
+| `processing` | `[ IN_PREPARATION ]` |
+| `shipped` | `[ DISPATCHED_TO_HUB ]` |
+| `completed` | `[ ARCHIVED_SUCCESSFULLY ]` |
+| `cancelled` | `[ CANCELLED ]` |
 
 ---
 
@@ -106,131 +83,38 @@ Navigation control
 
 ```
 tgBot-metallurg/
-├── main.py                      # Service entry point
-├── config.py                    # Configuration loader
-│
+├── main.py                  # entry point: DB check, routers, notify loop, polling
+├── config.py                # env vars
+├── Procfile                 # Railway start command
 ├── bot/
-│   ├── __init__.py
-│   ├── constants.py            # System constants & status map
-│   │
-│   ├── handlers/               # Command processors
-│   │   ├── start.py           # [SYSTEM_BOOT] initialization
-│   │   ├── status.py          # Status query handler
-│   │   ├── faq.py             # Knowledge base handler
-│   │   ├── contact.py         # Communication handler
-│   │   └── navigation.py      # Menu navigation
-│   │
-│   ├── keyboards/              # UI component definitions
-│   │   └── main.py            # Main keyboard layout
-│   │
-│   ├── services/               # Business logic layer
-│   │   └── order.py           # Order operations
-│   │
-│   └── states/                 # FSM (Finite State Machine)
-│       └── orders.py          # Order flow states
-│
-├── database/
-│   └── connection.py           # Async SQLite connection
-│
-├── requirements.txt            # Dependency manifest
-└── README.md                   # This documentation
+│   ├── constants.py         # button labels, texts, status map, routes
+│   ├── handlers/
+│   │   ├── start.py         # /start, saves the user to bot_users
+│   │   ├── status.py        # order lookup
+│   │   ├── faq.py
+│   │   └── contact.py
+│   ├── keyboards/           # reply + inline keyboards
+│   ├── services/
+│   │   ├── order.py         # orders / bot_users queries
+│   │   ├── nova_poshta.py   # calls the nova-poshta-track edge function
+│   │   └── notify.py        # "new items in the archive" broadcast loop
+│   └── states/orders.py     # FSM state for the lookup flow
+└── database/connection.py   # asyncpg connection
 ```
 
----
-
-```
-
-### Obtaining Credentials
-
-**User ID**:
-1. Open Telegram → Search [@userinfobot](https://t.me/userinfobot)
-2. Send any message
-3. Copy displayed User ID to ADMINS
+The database schema lives in the website repo: `supabase/schema.sql`.
 
 ---
 
-## DATABASE SCHEMA 💾
+## TROUBLESHOOTING ⚠️
 
-### Orders Table
-```supabase
-tracking_code     | STRING (Primary Key)
-user_id          | INTEGER
-status           | STRING (ForeignKey: StatusMap)
-created_at       | DATETIME
-updated_at       | DATETIME
-```
-
-### Status Registry
-Reference: [bot/constants.py](bot/constants.py#L10)
-
----
-
-## OPERATIONAL WORKFLOW 🔄
-
-### Order Status Check Flow
-```
-User sends < TRACK_ORDER_STATUS >
-        ↓
-System prompts: "Enter tracking code"
-        ↓
-User submits: [CODE]
-        ↓
-Query database for matching order
-        ↓
-Format response with current status
-        ↓
-Return formatted message to user
-```
-
----
-
-## ERROR HANDLING & RECOVERY ⚠️
-
-| Issue | Resolution |
-|-------|-----------|
-| **Bot offline** | Verify `BOT_TOKEN` in `.env` / Restart service |
-| **DB connection failed** | Check `DATABASE_URL` format / Verify file permissions |
-| **Command unresponsive** | Check bot process: `ps aux \| grep main.py` |
-| **Invalid tracking code** | Confirm code format / Check order exists |
-
-### Debug Mode
-```bash
-# Enable verbose logging
-python3 -c "import logging; logging.basicConfig(level=logging.DEBUG)" && python3 main.py
-```
-
----
-
-## DEPLOYMENT NOTES 📋
-
-- **Python**: 3.9+ required
-- **Runtime**: Async event-driven
-- **Memory**: ~150MB baseline
-- **Parse Mode**: HTML for rich formatting
-- **Timezone**: UTC (configurable via environment)
-
----
-
-## STATUS REFERENCE 📊
-
-| Code | Display | Description |
-|------|---------|-------------|
-| `waiting_for_payment` | `[PENDING_PAYMENT]` | Payment required |
-| `paid` | `[PAYMENT_CONFIRMED]` | Transaction complete |
-| `processing` | `[IN_PREPARATION]` | Assembly stage |
-| `shipped` | `[DISPATCHED_TO_HUB]` | In transportation |
-| `completed` | `[ARCHIVED_SUCCESSFULLY]` | Delivered |
-
----
-
-## PROJECT METADATA 📌
-
-- **Version**: v.2.026
-- **Protocol**: MTL // PROTOCOL
-- **Status**: OPERATIONAL
-- **Last Updated**: March 2026
-- **Language**: Python 3.9+
-- **License**: Private & Proprietary
+| Symptom | Fix |
+|---------|-----|
+| `TelegramUnauthorizedError` on start | `BOT_TOKEN` in Railway is wrong or was revoked in @BotFather |
+| `TelegramConflictError` | Another copy of the bot is polling with the same token (local run, second Railway environment) |
+| `Database connection failed` | Check `DATABASE_URL`; use the Supabase pooler connection string |
+| `// SYSTEM_ERROR` in chat | DB unreachable — see Railway logs |
+| No Nova Poshta block | Order has no `tracking_number`, or `SUPABASE_URL` / `SUPABASE_ANON_KEY` not set |
 
 ---
 
