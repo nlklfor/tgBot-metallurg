@@ -13,6 +13,8 @@
 - **[ FAQ ]** — delivery, returns, payment
 - **[ CONTACT_OPERATOR ]** — link to the manager
 
+**Order updates:** the website's order-confirmed screen links to `t.me/metallurgTm_bot?start=MTL-XXXXXX`. The bot links that chat to the order (`orders.customer_chat_id`, first chat wins) and then messages it whenever the order's status or TTN changes (checked every 60s, `bot/services/order_updates.py`).
+
 The bot also pings everyone who pressed /start (users with a Telegram @username) when new products appear in the archive (at most once every 12 hours).
 
 ## TECHNICAL SPECIFICATIONS 🛠️
@@ -89,7 +91,7 @@ tgBot-metallurg/
 ├── bot/
 │   ├── constants.py         # button labels, texts, status map, routes
 │   ├── handlers/
-│   │   ├── start.py         # /start, saves the user to bot_users
+│   │   ├── start.py         # /start (+ deep link MTL-XXXXXX → order updates), saves the user
 │   │   ├── status.py        # order lookup
 │   │   ├── faq.py
 │   │   └── contact.py
@@ -97,7 +99,8 @@ tgBot-metallurg/
 │   ├── services/
 │   │   ├── order.py         # orders / bot_users queries
 │   │   ├── nova_poshta.py   # calls the nova-poshta-track edge function
-│   │   └── notify.py        # "new items in the archive" broadcast loop
+│   │   ├── notify.py        # "new items in the archive" broadcast loop
+│   │   └── order_updates.py # per-order status/TTN messages to subscribed chats
 │   └── states/orders.py     # FSM state for the lookup flow
 └── database/connection.py   # asyncpg connection
 ```

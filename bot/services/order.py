@@ -74,3 +74,38 @@ async def save_bot_user(tg_username: str, chat_id: int) -> None:
         logger.exception("Failed to save bot user %s", tg_username)
     finally:
         await conn.close()
+
+
+async def subscribe_chat_to_order(order_number: str, chat_id: int) -> tuple[str, Optional[dict]]:
+    """
+    Links a Telegram chat to an order so the order-updates loop can message it.
+    Returns (result, order) where result is one of:
+      "ok"      — linked now (or this chat was already linked)
+      "taken"   — another chat already follows this order
+      "missing" — no such order
+    The order code is the secret here, same as for tracking lookups; the first
+    chat to claim an order keeps it.
+    """
+    conn = await get_connection()
+    try:
+        row = await conn.fetchrow(
+            """
+            UPDATE public.orders
+               SET customer_chat_id = $2,
+                   notified_state = status::text || '|' || coalesce(tracking_number, '')
+             WHERE order_number = $1
+               AND (customer_chat_id IS NULL OR customer_chat_id = $2)
+         RETURNING order_number, status::text AS status, tracking_number,
+                   shipping_zone, current_status_index
+            """,
+            order_number,
+            chat_id,
+        )
+        if row is not None:
+            return "ok", dict(row)
+        exists = await conn.fetchval(
+            "SELECT 1 FROM public.orders WHERE order_number = $1", order_number
+        )
+        return ("taken" if exists else "missing"), None
+    finally:
+        await conn.close()
