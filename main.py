@@ -11,6 +11,7 @@ from config import TOKEN
 from database.connection import get_connection
 from bot.handlers import contact, start, status, faq
 from bot.services.notify import start_notify_loop
+from bot.services.order_updates import start_order_updates_loop
 
 logging.basicConfig(level=logging.INFO, stream=__import__("sys").stdout)
 
@@ -37,6 +38,7 @@ async def main():
     dp.include_router(contact.router)
     print("🚀 Bot is starting...")
     asyncio.create_task(start_notify_loop(bot))
+    asyncio.create_task(start_order_updates_loop(bot))
     await dp.start_polling(bot)
 
 
