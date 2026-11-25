@@ -1,18 +1,16 @@
-from aiogram import Router
+from aiogram import F, Router
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
-from bot.constants import CONTACT_BTN
+
+from bot.constants import CONTACT_BTN, CONTACT_MESSAGE
 from bot.keyboards.main import main_keyboard
 
 router = Router()
 
 
-@router.message(lambda message: message.text == CONTACT_BTN)
-async def contact_manager(message: Message):
-    contact_text = (
-        "<b>// CONNECTING_TO_HUMAN_INTERFACE...</b>\n\n"
-        "For technical or logistics inquiries, reach out to our operator:\n\n"
-        "<b>OPERATOR:</b> @mtl_support\n"
-        "<b>AVAILABILITY:</b> 10:00 - 20:00\n\n"
-        "<i>// Please include your [ORDER_ID] when contacting</i>"
-    )
-    await message.answer(contact_text, reply_markup=main_keyboard())
+@router.message(Command("contact"))
+@router.message(F.text == CONTACT_BTN)
+async def contact_manager(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer(CONTACT_MESSAGE, reply_markup=main_keyboard())
