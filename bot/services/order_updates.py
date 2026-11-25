@@ -15,15 +15,16 @@ import logging
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 
-from bot.constants import INTERNATIONAL_ROUTE, LOCAL_ROUTE
+from bot.constants import route_for, stage_index
 from bot.keyboards.tracking import tracking_keyboard
-from database.connection import get_connection
+from config import SITE_URL
+from database.connection import db
 
 logger = logging.getLogger(__name__)
 
 CHECK_INTERVAL = 60  # seconds
 
-SITE_ORDERS_URL = "https://metallurg.vercel.app/orders"
+SITE_ORDERS_URL = f"{SITE_URL}/orders"
 
 HEADLINES = {
     "waiting_for_payment": ("// PENDING_PAYMENT", "We're waiting for your payment."),
@@ -58,21 +59,19 @@ def build_message(order: dict, prev_state: str | None) -> str:
     lines = [f"<b>{title}</b>", "", f"ORDER: <code>{html.escape(order['order_number'])}</code>", body]
 
     if status != "cancelled":
-        route = LOCAL_ROUTE if order.get("shipping_zone") == "Ukraine" else INTERNATIONAL_ROUTE
-        idx = max(0, min(int(order.get("current_status_index") or 0), len(route) - 1))
-        lines.append(f"STAGE: [ {route[idx]} ]")
+        route = route_for(order)
+        lines.append(f"STAGE: [ {route[stage_index(order, route)]} ]")
     if ttn and status != "cancelled":
         lines.append(f"TTN: <code>{html.escape(ttn)}</code>")
     if status == "completed":
         lines.append("")
-        lines.append(f'Leave a field report: <a href="{SITE_ORDERS_URL}">ORDERS &amp; REVIEWS</a>')
+        lines.append(f'File a field report: <a href="{SITE_ORDERS_URL}">ORDERS &amp; REVIEWS</a>')
 
     return "\n".join(lines)
 
 
 async def _pending(limit: int = 50) -> list[dict]:
-    conn = await get_connection()
-    try:
+    async with db() as conn:
         rows = await conn.fetch(
             """
             SELECT id, order_number, status::text AS status, tracking_number,
@@ -86,14 +85,11 @@ async def _pending(limit: int = 50) -> list[dict]:
             """,
             limit,
         )
-        return [dict(r) for r in rows]
-    finally:
-        await conn.close()
+    return [dict(r) for r in rows]
 
 
 async def _mark_sent(order_id, old_state: str | None, new_state: str) -> None:
-    conn = await get_connection()
-    try:
+    async with db() as conn:
         # Only if nothing else touched it meanwhile (no double sends).
         await conn.execute(
             """
@@ -104,8 +100,6 @@ async def _mark_sent(order_id, old_state: str | None, new_state: str) -> None:
             old_state,
             new_state,
         )
-    finally:
-        await conn.close()
 
 
 async def process_once(bot: Bot) -> int:

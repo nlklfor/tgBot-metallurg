@@ -1,3 +1,3 @@
-from . import start, status, faq, contact
+from . import alerts, contact, faq, operator, start, status
 
-__all__ = ["start", "status", "faq", "contact"]
+__all__ = ["alerts", "contact", "faq", "operator", "start", "status"]
